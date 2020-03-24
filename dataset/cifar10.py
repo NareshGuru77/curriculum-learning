@@ -46,6 +46,7 @@ class Cifar10Dataset(Dataset):
         g = sample[1024:2048].reshape((32, 32))
         b = sample[2048:].reshape((32, 32))
         image = np.dstack((r, g, b))
+        image = image.astype(np.float32)
+        image = (image / 255.) - 0.5
         label = self.labels[idx]
-        return {'image': image, 'label': label,
-                'cls_name': self.cls_names[label]}
+        return image, label
