@@ -1,0 +1,3 @@
+[submodule "dataset/AutoAugment"]
+	path = dataset/AutoAugment
+	url = https://github.com/DeepVoltaire/AutoAugment.git

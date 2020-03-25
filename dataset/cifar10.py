@@ -3,13 +3,18 @@ import glob
 import os
 import numpy as np
 from torch.utils.data import Dataset
+from PIL import Image
+
+from dataset.AutoAugment.autoaugment import CIFAR10Policy
 
 
 class Cifar10Dataset(Dataset):
 
-    def __init__(self, base_path, is_train=True):
+    def __init__(self, base_path, is_train=True, do_augment=False):
         self.base_path = base_path
         self.is_train = is_train
+        self.augment = do_augment
+        self.augment_policy = CIFAR10Policy()
         self.data, self.labels, self.cls_names = self.read_data()
 
     @staticmethod
@@ -46,6 +51,10 @@ class Cifar10Dataset(Dataset):
         g = sample[1024:2048].reshape((32, 32))
         b = sample[2048:].reshape((32, 32))
         image = np.dstack((r, g, b))
+        if self.augment:
+            image = Image.fromarray(image)
+            image = self.augment_policy(image)
+            image = np.array(image)
         image = image.astype(np.float32)
         image = (image / 255.) - 0.5
         label = self.labels[idx]

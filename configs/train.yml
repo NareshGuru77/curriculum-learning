@@ -3,7 +3,7 @@ train_params:
   optimizer:
     name: Adam
     lr: 0.0001
-  steps: 100000
+  steps: 50000
 
 train_dl_params:
   batch_size: 32
@@ -37,3 +37,4 @@ model_kwargs:
 
 
 base_data_path: './dataset/data'
+save_path: './logs/with_aug'
