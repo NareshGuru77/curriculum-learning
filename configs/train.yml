@@ -1,0 +1,40 @@
+train_params:
+  device: cuda
+  optimizer:
+    name: Adam
+    lr: 0.0001
+  steps: 50000
+
+train_dl_params:
+  batch_size: 32
+  shuffle: True
+  drop_last: True
+
+val_dl_params:
+  batch_size: 32
+  shuffle: False
+  drop_last: False
+
+
+model_kwargs:
+  conv_block1:
+    op1: [3, 32]
+    op2: [32, 32]
+    op3: [32, 32]
+  conv_block2:
+    op1: [32, 64]
+    op2: [64, 64]
+    op3: [64, 64]
+
+  tran_conv_block1:
+    op1: [64, 64]
+    op2: [64, 64]
+    op3: [64, 32]
+  tran_conv_block2:
+    op1: [32, 32]
+    op2: [32, 32]
+    op3: [32, 3]
+
+
+base_data_path: './dataset/data'
+save_path: './logs/with_aug'
