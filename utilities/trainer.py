@@ -1,19 +1,15 @@
-from torch.utils.data import DataLoader
-import torch
-import argparse
-import yaml
-import copy
+from abc import ABC, abstractmethod
 import os
-from torch.utils.tensorboard import SummaryWriter
+import yaml
 import logging
-import torchvision
+import copy
+import torch
+from torch.utils.tensorboard import SummaryWriter
 
-from vanilla_ae.model import VanillaAutoEncoder
-from dataset.cifar10 import Cifar10Dataset
 from utilities.saver_loader import SaverLoader
 
 
-class Trainer:
+class Trainer(ABC):
 
     def __init__(self, config):
         self.model_kwargs = config['model_kwargs']
@@ -38,28 +34,19 @@ class Trainer:
         self._val_dl = None
 
     @property
+    @abstractmethod
     def model(self):
-        if self._model is None:
-            self._model = VanillaAutoEncoder(**self.model_kwargs)
-            self._model = self._model.cuda(self.train_params['device'])
-
-        return self._model
+        raise NotImplementedError
 
     @property
+    @abstractmethod
     def train_dl(self):
-        if not self._train_dl:
-            self._train_dl = DataLoader(Cifar10Dataset(self.base_data_path,
-                                                       do_augment=True),
-                                        **self.train_dl_params)
-        return self._train_dl
+        raise NotImplementedError
 
     @property
+    @abstractmethod
     def val_dl(self):
-        if not self._val_dl:
-            self._val_dl = DataLoader(Cifar10Dataset(self.base_data_path,
-                                                     is_train=False),
-                                      **self.val_dl_params)
-        return self._val_dl
+        raise NotImplementedError
 
     @property
     def optimizer(self):
@@ -75,6 +62,10 @@ class Trainer:
                                            **optimizer_params)
 
         return self._optimizer
+
+    @abstractmethod
+    def writer_callbacks(self, train_loss, val_loss):
+        raise NotImplementedError
 
     def run_training(self):
         restore_path, completed_steps = self.saver_loader.restore_path()
@@ -96,10 +87,10 @@ class Trainer:
             train_loss = self.train_step(data)
 
             if step % 1000 == 0:
-                self.writer.add_scalar('Loss/train_mse', train_loss, step)
                 val_loss = self.val_step()
-                self.writer.add_scalar('Loss/val_mse', val_loss, step)
-
+                self.writer.add_scalar('Training/loss', train_loss, step)
+                self.writer.add_scalar('Validation/loss', val_loss, step)
+                self.writer_callbacks(train_loss, val_loss)
                 self.saver_loader.periodic_save(step, self.model,
                                                 self.optimizer)
                 self.saver_loader.save_best_model(step, self.model,
@@ -115,37 +106,22 @@ class Trainer:
 
         return loss.data.item()
 
+    @abstractmethod
+    def val_step_callback(self, prediction, data):
+        raise NotImplementedError
+
     def val_step(self):
         self.model.eval()
         val_loss = 0
         for data, _ in copy.deepcopy(self.train_dl):
             data = data.cuda(self.train_params['device'])
-            one_img = data[0, :, :, :]
             prediction = self.model(data)
-            one_pred = prediction[0, :, :, :]
-            result = torch.stack((one_img, one_pred), dim=0)
-            result = result.permute(0, 3, 1, 2)
-            result = (result + 0.5) * 255
-            result = torchvision.utils.make_grid(result, nrow=1)
-            self.writer.add_image('result', result, 0)
             loss = self.model.loss(prediction, data)
             val_loss += loss.data.item()
 
+            self.val_step_callback(prediction, data)
+
         return val_loss / len(self.train_dl)
 
-
-def main():
-    logging.getLogger().setLevel(logging.INFO)
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--config', help='configuration file',
-                        default='./configs/train.yml')
-    args = parser.parse_args()
-
-    with open(args.config, 'r') as f:
-        config = yaml.load(f)
-    trainer = Trainer(config)
-    trainer.run_training()
-
-
-if __name__ == '__main__':
-    main()
+    def infer(self):
+        pass
