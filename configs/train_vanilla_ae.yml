@@ -1,3 +1,7 @@
+ae_type: 'AE'
+base_data_path: './dataset/data'
+save_path: './logs/with_aug'
+
 train_params:
   device: cuda
   optimizer:
@@ -34,7 +38,3 @@ model_kwargs:
     op1: [32, 32]
     op2: [32, 32]
     op3: [32, 3]
-
-
-base_data_path: './dataset/data'
-save_path: './logs/with_aug'

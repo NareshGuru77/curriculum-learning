@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import ABC, abstractmethod, abstractproperty
 import os
 import yaml
 import logging
@@ -78,13 +78,14 @@ class Trainer(ABC):
         iterator = iter(self.train_dl)
         for step in range(completed_steps, self.train_params['steps']):
             try:
-                data, _ = next(iterator)
+                data, label = next(iterator)
             except StopIteration:
                 iterator = iter(self.train_dl)
-                data, _ = next(iterator)
+                data, label = next(iterator)
             data = data.cuda(self.train_params['device'])
+            label = label.cuda(self.train_params['device'])
 
-            train_loss = self.train_step(data)
+            train_loss = self.train_step(data, label)
 
             if step % 1000 == 0:
                 val_loss = self.val_step()
@@ -96,30 +97,31 @@ class Trainer(ABC):
                 self.saver_loader.save_best_model(step, self.model,
                                                   self.optimizer, val_loss)
 
-    def train_step(self, data):
+    def train_step(self, data, label):
         self.model.train()
         self.optimizer.zero_grad()
         prediction = self.model(data)
-        loss = self.model.loss(prediction, data)
+        loss = self.model.loss(prediction, label)
         loss.backward()
         self.optimizer.step()
 
         return loss.data.item()
 
     @abstractmethod
-    def val_step_callback(self, prediction, data):
+    def val_step_callback(self, prediction, label):
         raise NotImplementedError
 
     def val_step(self):
         self.model.eval()
         val_loss = 0
-        for data, _ in copy.deepcopy(self.train_dl):
+        for data, label in copy.deepcopy(self.train_dl):
             data = data.cuda(self.train_params['device'])
+            label = label.cuda(self.train_params['device'])
             prediction = self.model(data)
-            loss = self.model.loss(prediction, data)
+            loss = self.model.loss(prediction, label)
             val_loss += loss.data.item()
 
-            self.val_step_callback(prediction, data)
+            self.val_step_callback(prediction, label)
 
         return val_loss / len(self.train_dl)
 

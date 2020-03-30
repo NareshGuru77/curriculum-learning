@@ -14,7 +14,7 @@ class SelfSupervisedAE(torch.nn.Module):
     def forward(self, in_ts):
         in_ts = in_ts.permute(0, 3, 1, 2)
         encoding = self.encoder(in_ts)
-        flat_encoding = torch.flatten(encoding)
+        flat_encoding = torch.flatten(encoding, start_dim=1)
         net = self.fc1(flat_encoding)
         predictions = self.fc2(net)
 

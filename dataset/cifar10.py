@@ -6,15 +6,16 @@ from torch.utils.data import Dataset
 from PIL import Image
 
 from dataset.AutoAugment.autoaugment import CIFAR10Policy
-from dataset.AutoAugment.autoaugment import SubPolicy
 
 
 class Cifar10Dataset(Dataset):
 
-    def __init__(self, base_path, is_train=True, do_augment=False):
+    def __init__(self, base_path, is_train=True, do_augment=False,
+                 ae_label=False):
         self.base_path = base_path
         self.is_train = is_train
         self.augment = do_augment
+        self.ae_label = ae_label
         self.augment_policy = CIFAR10Policy()
         self.data, self.labels, self.cls_names = self.read_data()
 
@@ -64,6 +65,8 @@ class Cifar10Dataset(Dataset):
         image = (image / 255.) - 0.5
 
         label = self.labels[idx]
+        if self.ae_label:
+            return image, image
         return image, label
 
 
@@ -77,15 +80,23 @@ class Cifar10Rotation(Cifar10Dataset):
 
         super(Cifar10Rotation, self).__init__(base_path, is_train=is_train)
 
+    @staticmethod
+    def rotate_with_fill(img, magnitude):
+        # taken from autoaugment code...
+        rot = img.convert("RGBA").rotate(magnitude)
+        return Image.composite(
+            rot, Image.new("RGBA", rot.size, (128,) * 4), rot).convert(img.mode)
+
     def __getitem__(self, idx):
         sample = self.data[idx, :]
         image = self.form_image(sample)
+        angle = np.random.choice(self.rotation_angles, size=(1,))
+        angle = int(angle)
         image = Image.fromarray(image)
-        angle = np.random.choice(self.rotation_angles, size=(1, ))
-        rotate_only = SubPolicy(1, 'rotate', angle,
-                                0, 'shearX', 0, fillcolor=(0, 0, 0))
-        image = rotate_only(image)
+        image = self.rotate_with_fill(image, angle)
         image = np.array(image)
+        image = image.astype(np.float32)
+        image = (image / 255.) - 0.5
 
         label = self.angle_to_label[angle]
         return image, label

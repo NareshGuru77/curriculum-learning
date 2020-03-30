@@ -22,16 +22,16 @@ class TrainAE(Trainer):
 
     def train_dl(self):
         if not self._train_dl:
-            self._train_dl = DataLoader(Cifar10Dataset(self.base_data_path,
-                                                       do_augment=True),
-                                        **self.train_dl_params)
+            self._train_dl = DataLoader(Cifar10Dataset(
+                self.base_data_path, do_augment=True, ae_label=True),
+                **self.train_dl_params)
         return self._train_dl
 
     def val_dl(self):
         if not self._val_dl:
-            self._val_dl = DataLoader(Cifar10Dataset(self.base_data_path,
-                                                     is_train=False),
-                                      **self.val_dl_params)
+            self._val_dl = DataLoader(Cifar10Dataset(
+                self.base_data_path, is_train=False, ae_label=True),
+                **self.val_dl_params)
         return self._val_dl
 
     def writer_callbacks(self, train_loss, val_loss):
